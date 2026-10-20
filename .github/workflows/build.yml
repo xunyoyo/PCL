@@ -117,7 +117,7 @@ jobs:
         cp "dist/Plain Craft Launcher 2.exe" "pkg/Plain Craft Launcher 2.exe"
         # 附上许可证与改动说明
         cp LICENCE "pkg/LICENCE"
-        cat > "pkg/README-修改说明.md" <<EOF
+        cat > "pkg/README-CHANGES.md" <<EOF
         # PCL 第三方修改版（$version）
 
         本软件是**第三方基于 PCL 独立进行二次创作的产物**，非官方发布。
@@ -135,7 +135,7 @@ jobs:
 
         继续遵循仓库根目录 LICENCE（《PCL 分发有限许可》与《PCL 存储库合理使用指南》）。
         EOF
-        cd pkg && zip -r "../PCL-$version-个人修复版.zip" . && cd ..
+        cd pkg && zip -qr "../PCL-$version.zip" . && cd ..
 
     - name: Create Release
       env:
@@ -143,7 +143,7 @@ jobs:
       shell: bash
       run: |
         version="${{ steps.version.outputs.version }}"
-        gh release create "$version" "PCL-$version-个人修复版.zip" \
+        gh release create "$version" "PCL-$version.zip" \
           --title "PCL $version 个人修复版" \
           --notes "第三方基于 PCL 独立修改的产物，非官方发布。
 
