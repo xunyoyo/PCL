@@ -83,6 +83,12 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Set Describe
+      shell: bash
+      run: |
+          describe=`git describe --tags --always`
+          echo "describe=$describe" >> $GITHUB_ENV
+
     - name: Set Version
       id: version
       shell: bash
