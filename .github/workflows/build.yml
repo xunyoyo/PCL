@@ -67,3 +67,80 @@ jobs:
       with:
         name: ${{ matrix.configuration }} ${{ env.describe }}
         path: Plain Craft Launcher 2\obj\${{ matrix.configuration }}\Plain Craft Launcher 2.exe
+
+  release:
+    name: Release
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Set Version
+      id: version
+      shell: bash
+      run: |
+        # 取最近一个 tag 中的版本号（如 2.99.0.0），末位自增
+        last=$(git tag --list '[0-9]*' --sort=-v:refname | head -n 1)
+        last=${last:-2.99.0.0}
+        base=${last%.*}
+        patch=$(echo "$last" | awk -F. '{print $NF}')
+        version="$base.$((patch + 1))"
+        echo "last=$last" >> $GITHUB_OUTPUT
+        echo "version=$version" >> $GITHUB_OUTPUT
+        echo "发布版本：$version（上一个：$last）"
+
+    - name: Download Release Artifact
+      uses: actions/download-artifact@v6
+      with:
+        name: Release ${{ env.describe }}
+        path: dist
+
+    - name: Assemble Package
+      shell: bash
+      run: |
+        version="${{ steps.version.outputs.version }}"
+        mkdir -p pkg
+        cp "dist/Plain Craft Launcher 2.exe" "pkg/Plain Craft Launcher 2.exe"
+        # 附上许可证与改动说明
+        cp LICENCE "pkg/LICENCE"
+        cat > "pkg/README-修改说明.md" <<EOF
+        # PCL 第三方修改版（$version）
+
+        本软件是**第三方基于 PCL 独立进行二次创作的产物**，非官方发布。
+
+        - 原作者：龙腾猫跃（https://github.com/Meloong-Git/PCL）
+        - 上游版本：${{ steps.version.outputs.last }}
+        - 赞助入口：https://meloong.com/afd/a/LTCat
+
+        ## 本版本改动
+
+        移除了上游 2.99.0.0 中硬编码的 \`RestrictMcDownload\` 开关，
+        恢复 Minecraft 原版下载、整合包安装与版本修改功能。
+
+        ## 许可
+
+        继续遵循仓库根目录 LICENCE（《PCL 分发有限许可》与《PCL 存储库合理使用指南》）。
+        EOF
+        cd pkg && zip -r "../PCL-$version-个人修复版.zip" . && cd ..
+
+    - name: Create Release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      shell: bash
+      run: |
+        version="${{ steps.version.outputs.version }}"
+        gh release create "$version" "PCL-$version-个人修复版.zip" \
+          --title "PCL $version 个人修复版" \
+          --notes "第三方基于 PCL 独立修改的产物，非官方发布。
+
+        基于上游 ${{ steps.version.outputs.last }}，移除硬编码的 MC 下载限制，恢复原版下载、整合包安装与版本修改功能。
+
+        原作者：龙腾猫跃 · https://github.com/Meloong-Git/PCL"
